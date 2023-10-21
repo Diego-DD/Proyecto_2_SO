@@ -46,8 +46,13 @@ struct Espacio{
 
 // DEFINICIÓN DE FUNCIONES.
 
-void crearTAR(char* output_filename){
+void crearTAR(char* output_filename, bool v_command){
+
+  if(v_command) printf("\nINICIA LA CREACIÓN DEL ARCHIVO TAR.\n\n");
+
   struct Archivo archivos[100];
+
+  if(v_command) printf("- El arreglo de datos de archivos ha sido declarado.\n");
 
   for (int i = 0; i < 100; i++) {
     snprintf(archivos[i].nombre, sizeof(archivos[i].nombre), "");
@@ -55,24 +60,35 @@ void crearTAR(char* output_filename){
     archivos[i].fin = -1;
   }
 
+  if(v_command) printf("- El arreglo de datos de archivos ha sido inicializado.\n");
+
   struct Espacio espacios[100];
+
+  if(v_command) printf("- El arreglo de datos de espacios ha sido declarado.\n");
 
   for (int i = 0; i < 100; i++) {
     espacios[i].inicio = -1;
     espacios[i].fin = -1;
   }
 
+  if(v_command) printf("- El arreglo de datos de espacios ha sido inicializado.\n");
+
   FILE* archivoTAR = fopen(output_filename, "wb");
 
+  if(v_command) printf("- El archivo '%s' ha sido abierto.\n", output_filename);
+
   if (archivoTAR == NULL) {
-    perror("Error al abrir el archivo");
+    printf("\nError al abrir el archivo '%s'.\n", output_filename);
     exit(1);
   }
 
   fwrite(archivos, sizeof(struct Archivo), 100, archivoTAR);
+  if(v_command) printf("- Se ha escrito el arreglo de datos de archivos en el archivo '%s'.\n", output_filename);
   fwrite(espacios, sizeof(struct Espacio), 100, archivoTAR);
+  if(v_command) printf("- Se ha escrito el arreglo de espacios de archivos en el archivo '%s'.\n", output_filename);
 
   fclose(archivoTAR);
+  if(v_command) printf("- El archivo '%s' ha sido cerrado.\n", output_filename);
 }
 
 // PROGRAMA PRINCIPAL.
@@ -81,7 +97,7 @@ int main(int argc, char* argv[]) {
 
   // Análisis de errores en los comandos.
   
-  if((strcmp(argv[2], "star") != 0) || argv[3][0] != '-'){
+  if((strcmp(argv[1], "star") != 0) || argv[2][0] != '-'){
     printf("%s", OPTIONS);
     return 1;
   }
@@ -98,7 +114,7 @@ int main(int argc, char* argv[]) {
   bool r_command = false;
   bool p_command = false;
 
-  char *comandos = argv[3];
+  char *comandos = argv[2];
   for(int i = 0; comandos[i] != '\0'; i++){
     if(comandos[i] == 'c'){
       c_command = true;
@@ -124,8 +140,8 @@ int main(int argc, char* argv[]) {
   // Ejecución de funciones solicitadas por comandos.
 
   if(c_command){
-    char *nombreTAR = argv[4];
-    crearTAR(nombreTAR);
+    char *nombreTAR = argv[3];
+    crearTAR(nombreTAR, v_command);
   }
   if(x_command){
     // Función extraer archivos.
