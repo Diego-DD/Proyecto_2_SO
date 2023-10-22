@@ -35,6 +35,7 @@
 
 struct Archivo{
     char nombre[256];
+    long peso;
     long inicio;
     long fin;
 };
@@ -54,24 +55,21 @@ void crearTAR(char* output_filename, bool v_command){
 
   if(v_command) printf("- El arreglo de datos de archivos ha sido declarado.\n");
 
-  for (int i = 0; i < 100; i++) {
-    snprintf(archivos[i].nombre, sizeof(archivos[i].nombre), "");
-    archivos[i].inicio = -1;
-    archivos[i].fin = -1;
-  }
-
-  if(v_command) printf("- El arreglo de datos de archivos ha sido inicializado.\n");
-
   struct Espacio espacios[100];
 
   if(v_command) printf("- El arreglo de datos de espacios ha sido declarado.\n");
 
   for (int i = 0; i < 100; i++) {
+    snprintf(archivos[i].nombre, sizeof(archivos[i].nombre), "");
+    archivos[i].peso = -1;
+    archivos[i].inicio = -1;
+    archivos[i].fin = -1;
+
     espacios[i].inicio = -1;
     espacios[i].fin = -1;
   }
 
-  if(v_command) printf("- El arreglo de datos de espacios ha sido inicializado.\n");
+  if(v_command) printf("- Los arreglos de datos de archivos y espacios han sido inicializados.\n");
 
   FILE* archivoTAR = fopen(output_filename, "wb");
 
@@ -97,7 +95,7 @@ int main(int argc, char* argv[]) {
 
   // Análisis de errores en los comandos.
   
-  if((strcmp(argv[1], "star") != 0) || argv[2][0] != '-'){
+  if(argc < 4 || (strcmp(argv[1], "star") != 0) || argv[2][0] != '-'){
     printf("%s", OPTIONS);
     return 1;
   }
@@ -153,10 +151,7 @@ int main(int argc, char* argv[]) {
     // Función borrar archivos.
   }
   if(u_command){
-    // Función crear tar.
-  }
-  if(v_command){
-    // Función actualizar archivo.
+    // Función reescribir archivo.
   }
   if(f_command){
     if(c_command == false){
@@ -166,7 +161,7 @@ int main(int argc, char* argv[]) {
     // Función empacar archivos al crear tar.
   }
   if(r_command){
-    // Función agregar archivos.
+    // Función agregar archivos en una tar ya existente.
   }
   if(p_command){
     // Función desfragmentar tar.

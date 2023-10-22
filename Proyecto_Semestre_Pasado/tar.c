@@ -132,7 +132,6 @@ void list_tar_contents(const char* input_filename) {
     fclose(tar_file);
 }
 
-
 void delete_file_from_tar(const char* input_filename, const char* file_to_delete) {
     FILE* tar_file = fopen(input_filename, "rb");
     if (!tar_file) {
@@ -148,14 +147,14 @@ void delete_file_from_tar(const char* input_filename, const char* file_to_delete
         return;
     }
 
-    while (!feof(tar_file)) {
+    while (1) {
         char file_name[100];
         long file_size;
 
         // Leer el nombre del archivo
-        fread(file_name, sizeof(char), 100, tar_file);
-        if (feof(tar_file)) {
-            break;
+        size_t name_bytes_read = fread(file_name, sizeof(char), 100, tar_file);
+        if (name_bytes_read < 100) {
+            break;  // Fin del archivo tar
         }
 
         // Leer el tamaño del archivo
@@ -171,10 +170,11 @@ void delete_file_from_tar(const char* input_filename, const char* file_to_delete
             // Escribir el tamaño del archivo
             fwrite(&file_size, sizeof(long), 1, temp_file);
 
-            // Escribir el contenido del archivo
+            // Copiar el contenido del archivo
             char buffer[1024];
             size_t bytes_read;
-            while (file_size > 0 && (bytes_read = fread(buffer, sizeof(char), sizeof(buffer), tar_file)) > 0) {
+            while (file_size > 0) {
+                bytes_read = fread(buffer, sizeof(char), (file_size > sizeof(buffer) ? sizeof(buffer) : file_size), tar_file);
                 fwrite(buffer, sizeof(char), bytes_read, temp_file);
                 file_size -= bytes_read;
             }
@@ -243,6 +243,7 @@ int main(int argc, char* argv[]) {
     if (strcmp(option, "-c") == 0) {
         // Crear un archivo tar
         int num_files = argc - 3;
+        printf("NUMEROS = %d\n", num_files);
         const char** files_to_pack = (const char**)&argv[3];
         create_tar(tar_file, files_to_pack, num_files);
     } else if (strcmp(option, "-x") == 0) {
