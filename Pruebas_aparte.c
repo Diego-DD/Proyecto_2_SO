@@ -114,36 +114,11 @@ void actualizarEspacios(FILE* tar_file, long inicioTemp, long finTemp) {
 
 void empacarArchivos(const char* output_filename, const char* input_files[], int num_files){
 
-  struct Archivo archivos[100];
-
-  struct Espacio espacios[100];
-
-  for (int i = 0; i < 100; i++) {
-    snprintf(archivos[i].nombre, sizeof(archivos[i].nombre), "");
-    archivos[i].peso = -1;
-    archivos[i].inicio = -1;
-    archivos[i].fin = -1;
-
-    espacios[i].inicio = -1;
-    espacios[i].fin = -1;
-  }
-
-  FILE* archivoTAR = fopen(output_filename, "wb");
-
-  if (archivoTAR == NULL) {
-    printf("\nError al abrir el archivo '%s'.\n", output_filename);
-    exit(1);
-  }
-
-  fwrite(archivos, sizeof(struct Archivo), 100, archivoTAR);
-  fwrite(espacios, sizeof(struct Espacio), 100, archivoTAR);
-
-  fflush(archivoTAR);
-  fclose(archivoTAR);
+  crearTAR(output_filename);
 
   //------------------------------------------------------------------------------------------------------------------------
   
-  FILE* tar_file = fopen(output_filename, "wb");
+  FILE* tar_file = fopen(output_filename, "rb+");
   if(!tar_file){
     printf("Error al crear el archivo tar.\n");
     return;
@@ -248,7 +223,7 @@ void extraerArchivos(const char* input_filename){
 
   for(int i = 0; i < 100; i++){
     if(archivos[i].nombre[0] == '\0'){
-      break;
+      continue;
     }
 
     // Construir la ruta del archivo extraído
@@ -283,7 +258,7 @@ void extraerArchivos(const char* input_filename){
   fclose(tar_file);
 }
 
-void funcion_prueba(const char* tar_filename, const char* file_to_add) {
+void borrarArchivo(const char* tar_filename, const char* file_to_erase) {
     FILE* tar_file = fopen(tar_filename, "rb+");
 
     if (tar_file == NULL) {
@@ -300,7 +275,7 @@ void funcion_prueba(const char* tar_filename, const char* file_to_add) {
     long finTemp = -1;
 
     for (int i = 0; i < 100; i++) {
-        if (strcmp(archivos[i].nombre, file_to_add) == 0) {
+        if (strcmp(archivos[i].nombre, file_to_erase) == 0) {
             // Encontrado el archivo con el nombre deseado.
             indiceEncontrado = i;
             inicioTemp = archivos[i].inicio;
@@ -326,7 +301,7 @@ void funcion_prueba(const char* tar_filename, const char* file_to_add) {
         // Asegurarse de que los cambios se guarden en el archivo tar.
         fflush(tar_file);
     } else {
-        printf("No se encontró el archivo %s en el archivo tar.\n", file_to_add);
+        printf("No se encontró el archivo %s en el archivo tar.\n", file_to_erase);
     }
 
     // Cerrar el archivo tar cuando hayas terminado.
@@ -390,6 +365,75 @@ void listarEspacios(const char* tar_filename) {
     fclose(tar_file);
 }
 
+void extraerEnMismoLugar(const char* tar_filename) {
+    FILE* tar_file = fopen(tar_filename, "rb");
+    if (!tar_file) {
+        printf("Error al abrir el archivo tar: %s\n", tar_filename);
+        return;
+    }
+
+    // Leer la información de los archivos desde el archivo tar.
+    struct Archivo archivos[100];
+    fread(archivos, sizeof(struct Archivo), 100, tar_file);
+
+    // Extraer los archivos en el mismo lugar y guardar sus nombres.
+    char* extracted_files[100];  // Arreglo para almacenar los nombres de los archivos extraídos.
+    int num_extracted_files = 0; // Inicializar el número de archivos extraídos.
+    for (int i = 0; i < 100; i++) {
+        if (archivos[i].nombre[0] == '\0') {
+            continue;
+        }
+
+        // Construir el nombre del archivo a extraer.
+        char extract_filename[256];
+        snprintf(extract_filename, sizeof(extract_filename), "./%s", archivos[i].nombre);
+
+        FILE* extracted_file = fopen(extract_filename, "wb");
+        if (!extracted_file) {
+            printf("Error al crear el archivo extraído: %s\n", extract_filename);
+            continue;
+        }
+
+        // Copiar el contenido del archivo desde el archivo tar.
+        long file_size = archivos[i].peso;
+        fseek(tar_file, archivos[i].inicio, SEEK_SET);
+        char buffer[1024];
+        size_t bytes_read;
+
+        while (file_size > 0 && (bytes_read = fread(buffer, sizeof(char), sizeof(buffer), tar_file)) > 0) {
+            size_t bytes_to_write = bytes_read;
+            if (bytes_to_write > file_size) {
+                bytes_to_write = file_size;
+            }
+            fwrite(buffer, sizeof(char), bytes_to_write, extracted_file);
+            file_size -= bytes_to_write;
+        }
+
+        // Guardar el nombre del archivo extraído en el arreglo.
+        extracted_files[num_extracted_files] = strdup(archivos[i].nombre);
+        num_extracted_files++;
+
+        fclose(extracted_file);
+    }
+
+    fclose(tar_file);
+    printf("Archivos extraídos en el mismo lugar donde se encuentra '%s'.\n", tar_filename);
+
+    // Llamar a empacarArchivos después de extraer todos los archivos.
+    empacarArchivos("copia.tar", (const char**)extracted_files, num_extracted_files);
+
+    // Liberar la memoria de los nombres de los archivos extraídos.
+    for (int i = 0; i < num_extracted_files; i++) {
+      remove(extracted_files[i]);
+        free(extracted_files[i]);
+    }
+    remove(tar_filename);
+    rename("copia.tar", tar_filename);
+}
+
+
+
+
 int main(int argc, char* argv[]) {
 
   const char* tar_file = "probanding.tar";
@@ -402,11 +446,17 @@ int main(int argc, char* argv[]) {
   //listarTAR("probanding.tar");
   //archivos_pruebas(tar_file);
 
-  //extract_tar("probanding.tar");
+  //extraerArchivos("probanding.tar");
 
-  //funcion_prueba(tar_file, "archivo3.pdf");
+  //borrarArchivo(tar_file, "archivo2.pdf");
   //listarTAR("probanding.tar");
   //listarEspacios(tar_file);
+
+  //empacarArchivos(tar_file, files_to_pack, num_files);
+  //borrarArchivo(tar_file, "archivo3.pdf");
+  //extraerEnMismoLugar(tar_file);
+  //listarTAR("copia.tar");
+  //archivos_pruebas("copia.tar");
 
   return 0;
 }

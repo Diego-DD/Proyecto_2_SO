@@ -128,50 +128,31 @@ void actualizarRegistros(FILE* archivoTAR, const char* nombre, long peso, long i
   }
 }
 
-void empacarArchivos(const char* output_filename, const char* input_files[], int num_files, bool v_command){
+void actualizarEspacios(FILE* tar_file, long inicioTemp, long finTemp) {
+    // Mueve el cursor al principio del arreglo "Espacios".
+    fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
 
-  if(v_command) printf("\nINICIA LA CREACIÓN DEL ARCHIVO TAR.\n\n");
+    struct Espacio espacios[100];
+    fread(espacios, sizeof(struct Espacio), 100, tar_file);
 
-  struct Archivo archivos[100];
+    // Busca el primer índice disponible en "Espacios" (inicio y fin igual a -1).
+    for (int i = 0; i < 100; i++) {
+        if (espacios[i].inicio == -1 && espacios[i].fin == -1) {
+            // Encontrado un índice disponible en "Espacios".
+            espacios[i].inicio = inicioTemp;
+            espacios[i].fin = finTemp;
 
-  if(v_command) printf("- El arreglo de datos de archivos ha sido declarado.\n");
+            // Mueve el cursor al principio del arreglo "Espacios" antes de escribir los datos actualizados.
+            fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
+            fwrite(espacios, sizeof(struct Espacio), 100, tar_file);
+            break;
+        }
+    }
+}
 
-  struct Espacio espacios[100];
+void empacarArchivos(char* output_filename, const char* input_files[], int num_files, bool v_command){
 
-  if(v_command) printf("- El arreglo de datos de espacios ha sido declarado.\n");
-
-  for (int i = 0; i < 100; i++) {
-    snprintf(archivos[i].nombre, sizeof(archivos[i].nombre), "");
-    archivos[i].peso = -1;
-    archivos[i].inicio = -1;
-    archivos[i].fin = -1;
-
-    espacios[i].inicio = -1;
-    espacios[i].fin = -1;
-  }
-
-  if(v_command) printf("- Los arreglos de datos de archivos y espacios han sido inicializados.\n");
-
-  FILE* archivoTAR = fopen(output_filename, "wb");
-
-  if(v_command) printf("- El archivo '%s' ha sido abierto.\n", output_filename);
-
-  if (archivoTAR == NULL) {
-    printf("\nError al abrir el archivo '%s'.\n", output_filename);
-    exit(1);
-  }
-
-  fwrite(archivos, sizeof(struct Archivo), 100, archivoTAR);
-  if(v_command) printf("- Se ha escrito el arreglo de datos de archivos en el archivo '%s'.\n", output_filename);
-  fwrite(espacios, sizeof(struct Espacio), 100, archivoTAR);
-  if(v_command) printf("- Se ha escrito el arreglo de espacios de archivos en el archivo '%s'.\n", output_filename);
-
-  fclose(archivoTAR);
-  if(v_command) printf("- El archivo '%s' ha sido cerrado.\n", output_filename);
-
-  if(v_command) printf("\nFINALIZA LA CREACIÓN DEL ARCHIVO TAR.\n\n");
-
-  //------------------------------------------------------------------------------------------------------------------------
+  crearTAR(output_filename, v_command);
 
   if(v_command) printf("\nINICIA LA EMPAQUETACIÓN DE ARCHIVOS.\n\n");
   
@@ -308,7 +289,7 @@ void extraerArchivos(const char* input_filename, bool v_command){
 
   for(int i = 0; i < 100; i++){
     if(archivos[i].nombre[0] == '\0'){
-      break;
+      continue;
     }
 
     // Construir la ruta del archivo extraído
@@ -351,6 +332,160 @@ void extraerArchivos(const char* input_filename, bool v_command){
   if(v_command) printf("\n- El archivo '%s' ha sido cerrado.\n", input_filename);
 
   if(v_command) printf("\nFINALIZA LA EXTRACCIÓN DEL CONTENIDO DEL ARCHIVO TAR.\n\n");
+}
+
+void borrarArchivo(char* tar_filename, char* file_to_erase, bool v_command){
+
+  if(v_command) printf("\nINICIA EL BORRADO DEL ARCHIVO.\n\n");
+  
+  FILE* tar_file = fopen(tar_filename, "rb+");
+
+  if(tar_file == NULL){
+    printf("Error al abrir el archivo tar: %s\n", tar_filename);
+    return;
+  }
+
+  if(v_command) printf("\n- El archivo '%s' ha sido abierto.\n", tar_filename);
+
+  // Leer el contenido del archivo tar.
+  struct Archivo archivos[100];
+  fread(archivos, sizeof(struct Archivo), 100, tar_file);
+
+  if(v_command) printf("\n- Los registros de archivos han sido preparados.\n");
+
+  int indiceEncontrado = -1;
+  long inicioTemp = -1;
+  long finTemp = -1;
+
+  if(v_command) printf("\n- Se inicia la busqueda del archivo '%s' en los registros.\n", file_to_erase);
+
+  for(int i = 0; i < 100; i++){
+    if(strcmp(archivos[i].nombre, file_to_erase) == 0){
+      if(v_command) printf("\n- Se ha encontrado el archivo '%s' en los registros.\n", file_to_erase);
+      // Encontrado el archivo con el nombre deseado.
+      indiceEncontrado = i;
+      inicioTemp = archivos[i].inicio;
+      finTemp = archivos[i].fin;
+
+      // Cambiar el valor del espacio "nombre" por "".
+      strcpy(archivos[i].nombre, "");
+
+      break;
+    }
+  }
+
+  if(v_command) printf("\n- Se ha borrado el archivo '%s' de los registros.\n", file_to_erase);
+
+  if(indiceEncontrado != -1){
+    // Mueve el cursor al principio del arreglo "Archivos" antes de escribir los datos actualizados.
+    fseek(tar_file, 0, SEEK_SET);
+    fwrite(archivos, sizeof(struct Archivo), 100, tar_file);
+
+    // Llama a la función para actualizar "Espacios".
+    if (inicioTemp != -1 && finTemp != -1) {
+        actualizarEspacios(tar_file, inicioTemp, finTemp);
+    }
+
+    // Asegurarse de que los cambios se guarden en el archivo tar.
+    fflush(tar_file);
+
+    if(v_command) printf("\n- Se han actualizado los registros de espacios en blanco.\n");
+  }else{
+    printf("No se encontró el archivo %s en el archivo tar.\n", file_to_erase);
+  }
+
+  // Cerrar el archivo tar cuando hayas terminado.
+  fclose(tar_file);
+  if(v_command) printf("\n- El archivo '%s' ha sido cerrado.\n", tar_filename);
+
+  if(v_command) printf("\nFINALIZA EL BORRADO DEL ARCHIVO.\n\n");
+}
+
+void desfragmentar(char* tar_filename, bool v_command){
+
+  if(v_command) printf("\nINICIA EL DESFRAGMENTADO DEL ARCHIVO.\n\n");
+
+  FILE* tar_file = fopen(tar_filename, "rb");
+  if(!tar_file){
+    printf("Error al abrir el archivo tar: %s\n", tar_filename);
+    return;
+  }
+
+  if(v_command) printf("\n- El archivo '%s' ha sido abierto.\n", tar_filename);
+
+  // Leer la información de los archivos desde el archivo tar.
+  struct Archivo archivos[100];
+  fread(archivos, sizeof(struct Archivo), 100, tar_file);
+
+  if(v_command) printf("\n- Se han leido los datos de los registros de archivos.\n");
+
+  // Extraer los archivos en el mismo lugar y guardar sus nombres.
+  char* extracted_files[100];  // Arreglo para almacenar los nombres de los archivos extraídos.
+  int num_extracted_files = 0; // Inicializar el número de archivos extraídos.
+  if(v_command) printf("\n- Se inicia la extracción 'ficticio/temporal' de archivos.\n");
+  for(int i = 0; i < 100; i++){
+    if(archivos[i].nombre[0] == '\0'){
+      continue;
+    }
+
+    // Construir el nombre del archivo a extraer.
+    char extract_filename[256];
+    snprintf(extract_filename, sizeof(extract_filename), "./%s", archivos[i].nombre);
+    if(v_command) printf("\n- Se ha construido el nombre del archivo temporal extraido.\n");
+
+    FILE* extracted_file = fopen(extract_filename, "wb");
+    if(!extracted_file){
+      printf("Error al crear el archivo extraído: %s\n", extract_filename);
+      continue;
+    }
+
+    if(v_command) printf("\n- El archivo temporal '%s' ha sido creado.\n", extract_filename);
+
+    // Copiar el contenido del archivo desde el archivo tar.
+    if(v_command) printf("\n- Se inicia la copia del contenido original al archivo temporal.\n");
+    long file_size = archivos[i].peso;
+    fseek(tar_file, archivos[i].inicio, SEEK_SET);
+    char buffer[1024];
+    size_t bytes_read;
+
+    while(file_size > 0 && (bytes_read = fread(buffer, sizeof(char), sizeof(buffer), tar_file)) > 0){
+      size_t bytes_to_write = bytes_read;
+      if(bytes_to_write > file_size){
+        bytes_to_write = file_size;
+      }
+      fwrite(buffer, sizeof(char), bytes_to_write, extracted_file);
+      file_size -= bytes_to_write;
+    }
+
+    // Guardar el nombre del archivo extraído en el arreglo.
+    extracted_files[num_extracted_files] = strdup(archivos[i].nombre);
+    num_extracted_files++;
+    if(v_command) printf("\n- Se registra el nombre del archivo temporal extraido.\n");
+
+    fclose(extracted_file);
+    if(v_command) printf("\n- El archivo temporal '%s' ha sido cerrado.\n", extract_filename);
+  }
+
+  fclose(tar_file);
+  if(v_command) printf("\n- El archivo '%s' ha sido cerrado.\n", tar_filename);
+  //printf("Archivos extraídos en el mismo lugar donde se encuentra '%s'.\n", tar_filename);
+
+  // Llamar a empacarArchivos después de extraer todos los archivos.
+  empacarArchivos("copia.tar", (const char**)extracted_files, num_extracted_files);
+  if(v_command) printf("\n- Se han empacado en los archivos temporales en un nuevo archivo tar.\n");
+
+  // Liberar la memoria de los nombres de los archivos extraídos.
+  for(int i = 0; i < num_extracted_files; i++){
+    remove(extracted_files[i]);
+    free(extracted_files[i]);
+    if(v_command) printf("\n- Se ha eliminado el archivo temporal '%s'.\n", extracted_files[i]);
+  }
+  remove(tar_filename);
+  if(v_command) printf("\n- Se ha eliminado el archivo tar original '%s'.\n", tar_filename);
+  rename("copia.tar", tar_filename);
+  if(v_command) printf("\n- Se ha renombrado el archivo tar copia a '%s'.\n", tar_filename);
+
+  if(v_command) printf("\nFINALIZA EL DESFRAGMENTADO DEL ARCHIVO.\n\n");
 }
 
 // PROGRAMA PRINCIPAL.
@@ -405,21 +540,14 @@ int main(int argc, char* argv[]){
 
   char *nombreTAR = argv[3];
 
+  // CREAR ARCHIVO TAR.
+
   if(c_command){
     crearTAR(nombreTAR, v_command);
   }
-  if(x_command){
-    extraerArchivos(nombreTAR), v_command;
-  }
-  if(t_command){
-    listarTAR(nombreTAR, v_command);
-  }
-  if(d_command){
-    // Función borrar archivos.
-  }
-  if(u_command){
-    // Función reescribir archivo.
-  }
+
+  // EMPAQUETAR ARCHIVOS.
+
   if(f_command){
     if(c_command == false){
       printf("\nEl comando <-f> debe ser usado en conjunto con el comando <-c>.\n\nPor favor vuelva a intentarlo.....\n\n");
@@ -429,11 +557,42 @@ int main(int argc, char* argv[]){
     const char** files_to_pack = (const char**)&argv[4];
     empacarArchivos(nombreTAR, files_to_pack, num_files, v_command);
   }
+
+  // EXTRAER ARCHIVOS.
+
+  if(x_command){
+    extraerArchivos(nombreTAR, v_command);
+  }
+
+  // BORRAR UN ARCHIVO.
+
+  if(d_command){
+    char* file_to_erase = argv[4];
+    borrarArchivo(nombreTAR, file_to_erase, v_command);
+  }
+
+  // AGREGAR UN ARCHIVO.
+
   if(r_command){
     // Función agregar archivos en una tar ya existente.
   }
+
+  // REESCRIBIR UN ARCHIVO.
+
+  if(u_command){
+    // Función reescribir archivo.
+  }
+
+  // LISTAR ARCHIVO TAR.
+
+  if(t_command){
+    listarTAR(nombreTAR, v_command);
+  }
+
+  // DESFRAGMENTAR ARCHIVO TAR.
+
   if(p_command){
-    // Función desfragmentar tar.
+    desfragmentar(nombreTAR, v_command);
   }
 
   return 0;

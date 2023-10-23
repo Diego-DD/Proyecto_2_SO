@@ -243,7 +243,7 @@ int main(int argc, char* argv[]) {
     if (strcmp(option, "-c") == 0) {
         // Crear un archivo tar
         int num_files = argc - 3;
-        printf("NUMEROS = %d\n", num_files);
+        //printf("NUMEROS = %d\n", num_files);
         const char** files_to_pack = (const char**)&argv[3];
         create_tar(tar_file, files_to_pack, num_files);
     } else if (strcmp(option, "-x") == 0) {
