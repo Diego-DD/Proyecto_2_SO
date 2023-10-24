@@ -1,9 +1,12 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+
 
 struct Archivo{
     char nombre[256];
@@ -433,6 +436,80 @@ void extraerEnMismoLugar(const char* tar_filename) {
 
 
 
+void concatenarEspaciosContiguos(const char* tar_filename) {
+    // Abrir el archivo TAR en modo lectura y escritura.
+    FILE* tar_file = fopen(tar_filename, "rb+");
+
+    if (tar_file == NULL) {
+        printf("Error al abrir el archivo tar: %s\n", tar_filename);
+        return;
+    }
+
+    // Mueve el cursor al principio del arreglo "Espacios".
+    fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
+
+    struct Espacio espacios[100];
+    fread(espacios, sizeof(struct Espacio), 100, tar_file);
+
+    int contiguos = 0;
+    int indice_inicio = -1;
+    int inicio_primero = -1;
+    int fin_ultimo = -1;
+
+    for (int i = 0; i < 100; i++) {
+        if (espacios[i].inicio != -1 && espacios[i].fin != -1) {
+            if (indice_inicio == -1) {
+                indice_inicio = i;
+                inicio_primero = espacios[i].inicio;
+            }
+            fin_ultimo = espacios[i].fin;
+            contiguos++;
+        } else {
+            if (contiguos > 0) {
+                printf("Espacios contiguos: %d, Índice de inicio: %d, Índice de fin: %d, Inicio del primero: %ld, Fin del último: %ld\n", contiguos, indice_inicio, i - 1, inicio_primero, fin_ultimo);
+
+                // Eliminar los espacios antiguos en el rango.
+                for (int j = indice_inicio; j <= i - 1; j++) {
+                    espacios[j].inicio = -1;
+                    espacios[j].fin = -1;
+                }
+
+                // Crear un nuevo espacio que abarque desde el inicio del primero al fin del último.
+                espacios[indice_inicio].inicio = inicio_primero;
+                espacios[indice_inicio].fin = fin_ultimo;
+
+                // Mueve el cursor al principio del arreglo "Espacios" antes de escribir los datos actualizados.
+                fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
+                fwrite(espacios, sizeof(struct Espacio), 100, tar_file);
+            }
+            contiguos = 0;
+            indice_inicio = -1;
+            inicio_primero = -1;
+            fin_ultimo = -1;
+        }
+    }
+
+    // Comprobar si los espacios contiguos llegan hasta el final.
+    if (contiguos > 0) {
+        printf("Espacios contiguos: %d, Índice de inicio: %d, Índice de fin: %d, Inicio del primero: %ld, Fin del último: %ld\n", contiguos, indice_inicio, 99, inicio_primero, fin_ultimo);
+        // Eliminar los espacios antiguos en el rango.
+        for (int j = indice_inicio; j <= 99; j++) {
+            espacios[j].inicio = -1;
+            espacios[j].fin = -1;
+        }
+        // Crear un nuevo espacio que abarque desde el inicio del primero al fin del último.
+        espacios[indice_inicio].inicio = inicio_primero;
+        espacios[indice_inicio].fin = fin_ultimo;
+        // Mueve el cursor al principio del arreglo "Espacios" antes de escribir los datos actualizados.
+        fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
+        fwrite(espacios, sizeof(struct Espacio), 100, tar_file);
+    }
+
+    // Cerrar el archivo tar cuando hayas terminado.
+    fclose(tar_file);
+}
+
+
 
 int main(int argc, char* argv[]) {
 
@@ -448,10 +525,12 @@ int main(int argc, char* argv[]) {
 
   //extraerArchivos("probanding.tar");
 
-  //borrarArchivo(tar_file, "archivo2.pdf");
+  //borrarArchivo("ArchivoTAR_Lleno.tar", "archivo4.pdf");
   //listarTAR("probanding.tar");
-  //listarEspacios(tar_file);
-
+  //listarEspacios("ArchivoTAR_SinArchivos-2-4-6.tar");
+  concatenarEspaciosContiguos("ArchivoTAR_Lleno.tar");
+  listarEspacios("ArchivoTAR_Lleno.tar");
+  
   //empacarArchivos(tar_file, files_to_pack, num_files);
   //borrarArchivo(tar_file, "archivo3.pdf");
   //extraerEnMismoLugar(tar_file);
