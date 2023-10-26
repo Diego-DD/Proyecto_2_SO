@@ -436,78 +436,7 @@ void extraerEnMismoLugar(const char* tar_filename) {
 
 
 
-void concatenarEspaciosContiguos(const char* tar_filename) {
-    // Abrir el archivo TAR en modo lectura y escritura.
-    FILE* tar_file = fopen(tar_filename, "rb+");
 
-    if (tar_file == NULL) {
-        printf("Error al abrir el archivo tar: %s\n", tar_filename);
-        return;
-    }
-
-    // Mueve el cursor al principio del arreglo "Espacios".
-    fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
-
-    struct Espacio espacios[100];
-    fread(espacios, sizeof(struct Espacio), 100, tar_file);
-
-    int contiguos = 0;
-    int indice_inicio = -1;
-    int inicio_primero = -1;
-    int fin_ultimo = -1;
-
-    for (int i = 0; i < 100; i++) {
-        if (espacios[i].inicio != -1 && espacios[i].fin != -1) {
-            if (indice_inicio == -1) {
-                indice_inicio = i;
-                inicio_primero = espacios[i].inicio;
-            }
-            fin_ultimo = espacios[i].fin;
-            contiguos++;
-        } else {
-            if (contiguos > 0) {
-                printf("Espacios contiguos: %d, Índice de inicio: %d, Índice de fin: %d, Inicio del primero: %ld, Fin del último: %ld\n", contiguos, indice_inicio, i - 1, inicio_primero, fin_ultimo);
-
-                // Eliminar los espacios antiguos en el rango.
-                for (int j = indice_inicio; j <= i - 1; j++) {
-                    espacios[j].inicio = -1;
-                    espacios[j].fin = -1;
-                }
-
-                // Crear un nuevo espacio que abarque desde el inicio del primero al fin del último.
-                espacios[indice_inicio].inicio = inicio_primero;
-                espacios[indice_inicio].fin = fin_ultimo;
-
-                // Mueve el cursor al principio del arreglo "Espacios" antes de escribir los datos actualizados.
-                fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
-                fwrite(espacios, sizeof(struct Espacio), 100, tar_file);
-            }
-            contiguos = 0;
-            indice_inicio = -1;
-            inicio_primero = -1;
-            fin_ultimo = -1;
-        }
-    }
-
-    // Comprobar si los espacios contiguos llegan hasta el final.
-    if (contiguos > 0) {
-        printf("Espacios contiguos: %d, Índice de inicio: %d, Índice de fin: %d, Inicio del primero: %ld, Fin del último: %ld\n", contiguos, indice_inicio, 99, inicio_primero, fin_ultimo);
-        // Eliminar los espacios antiguos en el rango.
-        for (int j = indice_inicio; j <= 99; j++) {
-            espacios[j].inicio = -1;
-            espacios[j].fin = -1;
-        }
-        // Crear un nuevo espacio que abarque desde el inicio del primero al fin del último.
-        espacios[indice_inicio].inicio = inicio_primero;
-        espacios[indice_inicio].fin = fin_ultimo;
-        // Mueve el cursor al principio del arreglo "Espacios" antes de escribir los datos actualizados.
-        fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
-        fwrite(espacios, sizeof(struct Espacio), 100, tar_file);
-    }
-
-    // Cerrar el archivo tar cuando hayas terminado.
-    fclose(tar_file);
-}
 
 
 void listarArchivosTAR(const char* tar_filename){
@@ -737,6 +666,103 @@ void agregarArchivo(const char* tar_filename, const char* archivo_a_agregar) {
     }
 }
 
+int compararPorInicio(const void* a, const void* b) {
+    const struct Espacio* espacioA = (const struct Espacio*)a;
+    const struct Espacio* espacioB = (const struct Espacio*)b;
+
+    if (espacioA->inicio != -1 && espacioB->inicio != -1) {
+        if (espacioA->inicio < espacioB->inicio) {
+            return -1;
+        } else if (espacioA->inicio > espacioB->inicio) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else if (espacioA->inicio != -1 && espacioB->inicio == -1) {
+        return -1; // Espacio A va antes que el espacio B
+    } else if (espacioA->inicio == -1 && espacioB->inicio != -1) {
+        return 1; // Espacio B va antes que el espacio A
+    } else {
+        return 0;
+    }
+}
+
+void concatenarEspaciosContiguos(const char* tar_filename) {
+    // Abrir el archivo TAR en modo lectura y escritura.
+    FILE* tar_file = fopen(tar_filename, "rb+");
+
+    if (tar_file == NULL) {
+        printf("Error al abrir el archivo tar: %s\n", tar_filename);
+        return;
+    }
+
+    // Mueve el cursor al principio del arreglo "Espacios".
+    fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
+
+    struct Espacio espacios[100];
+    fread(espacios, sizeof(struct Espacio), 100, tar_file);
+
+    // Ordena la matriz espacios por el valor de inicio.
+    qsort(espacios, 100, sizeof(struct Espacio), compararPorInicio);
+
+    int contiguos = 0;
+    int indice_inicio = -1;
+    int inicio_primero = -1;
+    int fin_ultimo = -1;
+
+    for (int i = 0; i < 100; i++) {
+        if (espacios[i].inicio != -1 && espacios[i].fin != -1) {
+            if (indice_inicio == -1) {
+                indice_inicio = i;
+                inicio_primero = espacios[i].inicio;
+            }
+            fin_ultimo = espacios[i].fin;
+            contiguos++;
+        } else {
+            if (contiguos > 0) {
+                printf("Espacios contiguos: %d, Índice de inicio: %d, Índice de fin: %d, Inicio del primero: %ld, Fin del último: %ld\n", contiguos, indice_inicio, i - 1, inicio_primero, fin_ultimo);
+
+                // Eliminar los espacios antiguos en el rango.
+                for (int j = indice_inicio; j <= i - 1; j++) {
+                    espacios[j].inicio = -1;
+                    espacios[j].fin = -1;
+                }
+
+                // Crear un nuevo espacio que abarque desde el inicio del primero al fin del último.
+                espacios[indice_inicio].inicio = inicio_primero;
+                espacios[indice_inicio].fin = fin_ultimo;
+            }
+            contiguos = 0;
+            indice_inicio = -1;
+            inicio_primero = -1;
+            fin_ultimo = -1;
+        }
+    }
+
+    // Comprobar si los espacios contiguos llegan hasta el final.
+    if (contiguos > 0) {
+        printf("Espacios contiguos: %d, Índice de inicio: %d, Índice de fin: %d, Inicio del primero: %ld, Fin del último: %ld\n", contiguos, indice_inicio, 99, inicio_primero, fin_ultimo);
+        // Eliminar los espacios antiguos en el rango.
+        for (int j = indice_inicio; j <= 99; j++) {
+            espacios[j].inicio = -1;
+            espacios[j].fin = -1;
+        }
+        // Crear un nuevo espacio que abarque desde el inicio del primero al fin del último.
+        espacios[indice_inicio].inicio = inicio_primero;
+        espacios[indice_inicio].fin = fin_ultimo;
+    }
+
+    // Ordena nuevamente la matriz para mover los espacios con inicio igual a -1 al final.
+    qsort(espacios, 100, sizeof(struct Espacio), compararPorInicio);
+
+    // Mueve el cursor al principio del arreglo "Espacios" antes de escribir los datos actualizados.
+    fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
+    fwrite(espacios, sizeof(struct Espacio), 100, tar_file);
+
+    // Cerrar el archivo tar cuando hayas terminado.
+    fclose(tar_file);
+}
+
 
 
 
@@ -799,9 +825,9 @@ int main(int argc, char* argv[]) {
   
   
 **/
-  agregarArchivo("aq.tar","pufi.pdf");
-  listarArchivosTAR("aq.tar");
-  listarEspacios("aq.tar");
+  //agregarArchivo("aq.tar","pufi.pdf");
+  //listarArchivosTAR("aq.tar");
+  //listarEspacios("aq.tar");
   //concatenarEspaciosContiguos("simulit.tar");
   //agregarArchivo("simulit.tar","archivo2.pdf");
   //listarTAR("simulit.tar");
@@ -839,19 +865,19 @@ int main(int argc, char* argv[]) {
   //listarTAR("copia.tar");
   //archivos_pruebas("copia.tar");
 /*
-  crearTAR("a.tar");
+  crearTAR("be.tar");
   const char* archivos_entrada[] = {"archivo1.pdf", "archivo2.pdf", "archivo3.pdf", "archivo4.pdf", "archivo5.pdf"};
   int num_archivos = 5;
-  const char* archivo_salida = "a.tar";
+  const char* archivo_salida = "be.tar";
 
   // Llamar a la función con valores predeterminados
   empacarArchivos(archivo_salida, archivos_entrada, num_archivos);
-
-  borrarArchivo("a.tar", "archivo2.pdf");
-  borrarArchivo("a.tar", "archivo3.pdf");
-  concatenarEspaciosContiguos("a.tar");
-  listarTAR("a.tar");
-  listarEspacios("a.tar");
 */
+  //borrarArchivo("bh.tar", "archivo1.pdf");
+  //borrarArchivo("be.tar", "archivo2.pdf");
+  concatenarEspaciosContiguos("bh.tar");
+  listarTAR("bh.tar");
+  listarEspacios("bh.tar");
+
   return 0;
 }
