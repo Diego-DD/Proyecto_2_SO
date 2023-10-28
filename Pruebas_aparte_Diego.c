@@ -546,7 +546,7 @@ void agregarArchivo(const char* tar_filename, const char* archivo_a_agregar) {
         printf("Inicio del espacio + Tamaño del archivo: %ld\n", inicio_archivo + peso_archivo);
 
         // Verifica si el tamaño del archivo a agregar es igual al espacio disponible.
-        if (file_size == fin_archivo - inicio_archivo) {
+        if (file_size == fin_archivo - inicio_archivo+1) {
             printf("El tamaño del archivo es igual al espacio disponible.\n");
             // Llama a la función para actualizar registros.
             actualizarRegistros(tar_file, archivo_a_agregar, file_size, inicio_archivo, file_size + inicio_archivo);
@@ -554,12 +554,13 @@ void agregarArchivo(const char* tar_filename, const char* archivo_a_agregar) {
             // Reemplaza el espacio existente en el índice encontrado con el nuevo espacio no disponible.
             espacios[espacio_encontrado].inicio = -1;
             espacios[espacio_encontrado].fin = -1;
-
+/*
             // Cierra el archivo después de hacer las modificaciones.
             fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
             fwrite(espacios, sizeof(struct Espacio), 100, tar_file);
             fclose(tar_file);
-        } else if (file_size < fin_archivo - inicio_archivo) {
+*/
+        } else if (file_size < fin_archivo - inicio_archivo+1) {
             printf("El tamaño del archivo es menor que el espacio disponible.\n");
 
             // Llama a la función para actualizar registros.
@@ -589,7 +590,7 @@ void agregarArchivo(const char* tar_filename, const char* archivo_a_agregar) {
                     // Cierra el archivo después de hacer las modificaciones.
                     fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
                     fwrite(espacios, sizeof(struct Espacio), 100, tar_file);
-                    fclose(tar_file);
+                    
                 } else {
                     printf("No se pudo crear el nuevo archivo para el espacio restante.\n");
                 }
@@ -597,73 +598,62 @@ void agregarArchivo(const char* tar_filename, const char* archivo_a_agregar) {
         } else {
             printf("El tamaño del archivo es mayor que el espacio disponible.\n");
 
+            
+
             // Agregar el archivo al final del arreglo de archivos si es mayor que el espacio.
-            int i;
-            for (i = 0; i < 100; i++) {
+            int espacio_disponible = -1;
+            for (int i = 0; i < 100; i++) {
                 if (archivos[i].peso == -1) {
+                    espacio_disponible = i;
                     // Se ha encontrado un espacio vacío en el arreglo de archivos.
                     break;
                 }
             }
 
-            if (i < 100) {
+            if (espacio_disponible != -1 && espacio_disponible < 100) {
                 // Copia el nombre del archivo a agregar en la estructura de archivos.
-                strncpy(archivos[i].nombre, archivo_a_agregar, sizeof(archivos[i].nombre));
-                archivos[i].peso = file_size;
-                archivos[i].inicio = archivos[i-1].fin + 1;
-                archivos[i].fin = archivos[i-1].fin + file_size;
+                strncpy(archivos[espacio_disponible].nombre, archivo_a_agregar, sizeof(archivos[espacio_disponible].nombre));
+                archivos[espacio_disponible].peso = file_size;
+                archivos[espacio_disponible].inicio = archivos[espacio_disponible-1].fin + 1;
+                archivos[espacio_disponible].fin = archivos[espacio_disponible-1].fin + file_size;
 
-                fseek(tar_file, i * sizeof(struct Archivo), SEEK_SET);
-                fwrite(&archivos[i], sizeof(struct Archivo), 1, tar_file);
+                fseek(tar_file, espacio_disponible * sizeof(struct Archivo), SEEK_SET);
+                fwrite(&archivos[espacio_disponible], sizeof(struct Archivo), 1, tar_file);
 
-                // Calcula el inicio y fin del nuevo archivo
-                long nuevo_inicio = fin_archivo + 1;
-                long nuevo_fin = nuevo_inicio + archivos[i].peso - 1;
+                
 
-                // Actualiza las estructuras de espacios
-                espacios[espacio_encontrado].inicio = nuevo_fin + 1;
-                espacios[espacio_encontrado].fin = fin_archivo;
-
-                printf("Archivo %s agregado en la posición %d.\n", archivo_a_agregar, i);
+                printf("Archivo %s agregado en la posición %d.\n", archivo_a_agregar, espacio_disponible);
             } else {
                 printf("No hay espacio en el arreglo de archivos para agregar %s.\n", archivo_a_agregar);
             }
         }
     } else {
+        
         printf("No se encontró un espacio adecuado para el archivo %s en el archivo tar.\n", archivo_a_agregar);
                     // Agregar el archivo al final del arreglo de archivos si es mayor que el espacio.
-            int i;
-            for (i = 0; i < 100; i++) {
+            int espacio_disponible = -1;
+            for (int i = 0; i < 100; i++) {
                 if (archivos[i].peso == -1) {
+                    espacio_disponible = i;
                     // Se ha encontrado un espacio vacío en el arreglo de archivos.
                     break;
                 }
             }
 
-            if (i < 100) {
+            if (espacio_disponible != -1 && espacio_disponible < 100) {
                 // Copia el nombre del archivo a agregar en la estructura de archivos.
-                strncpy(archivos[i].nombre, archivo_a_agregar, sizeof(archivos[i].nombre));
-                archivos[i].peso = file_size;
-                archivos[i].inicio = archivos[i-1].fin + 1;
-                archivos[i].fin = archivos[i-1].fin + file_size;
+                strncpy(archivos[espacio_disponible].nombre, archivo_a_agregar, sizeof(archivos[espacio_disponible].nombre));
+                archivos[espacio_disponible].peso = file_size;
+                archivos[espacio_disponible].inicio = archivos[espacio_disponible-1].fin + 1;
+                archivos[espacio_disponible].fin = archivos[espacio_disponible-1].fin + file_size;
 
-                fseek(tar_file, i * sizeof(struct Archivo), SEEK_SET);
-                fwrite(&archivos[i], sizeof(struct Archivo), 1, tar_file);
-
-                // Calcula el inicio y fin del nuevo archivo
-                long nuevo_inicio = fin_archivo + 1;
-                long nuevo_fin = nuevo_inicio + archivos[i].peso - 1;
-
-                // Actualiza las estructuras de espacios
-                espacios[espacio_encontrado].inicio = nuevo_fin + 1;
-                espacios[espacio_encontrado].fin = fin_archivo;
-
-                printf("Archivo %s agregado en la posición %d.\n", archivo_a_agregar, i);
-            } else {
-                printf("No hay espacio en el arreglo de archivos para agregar %s.\n", archivo_a_agregar);
-            }
-        fclose(tar_file);
+                fseek(tar_file, espacio_disponible * sizeof(struct Archivo), SEEK_SET);
+                fwrite(&archivos[espacio_disponible], sizeof(struct Archivo), 1, tar_file);
+        
     }
+    }
+
+    fclose(tar_file);
 }
 
 int compararPorInicio(const void* a, const void* b) {
@@ -764,6 +754,231 @@ void concatenarEspaciosContiguos(const char* tar_filename) {
 }
 
 
+// Función de comparación para qsort
+int compararArchivos(const void *a, const void *b) {
+    const struct Archivo *archivoA = (const struct Archivo *)a;
+    const struct Archivo *archivoB = (const struct Archivo *)b;
+    return archivoA->inicio - archivoB->inicio;
+}
+
+void ordenarArchivosPorInicio(const char* tar_filename) {
+    FILE* tar_file = fopen(tar_filename, "rb+");
+
+    if (tar_file == NULL) {
+        printf("Error al abrir el archivo tar: %s\n", tar_filename);
+        return;
+    }
+
+    // Leer todos los registros de archivo en el archivo TAR
+    struct Archivo archivos[100];
+    int numArchivos = 0;
+    while (numArchivos < 100 && fread(&archivos[numArchivos], sizeof(struct Archivo), 1, tar_file) == 1) {
+        if (archivos[numArchivos].inicio > -1) {
+            numArchivos++;
+        }
+    }
+
+    // Ordenar los archivos en función de su valor de inicio
+    qsort(archivos, numArchivos, sizeof(struct Archivo), compararArchivos);
+
+    // Sobrescribir el archivo TAR con los archivos ordenados
+    fseek(tar_file, 0, SEEK_SET);
+    for (int i = 0; i < numArchivos; i++) {
+        fwrite(&archivos[i], sizeof(struct Archivo), 1, tar_file);
+    }
+
+    fclose(tar_file);
+}
+
+
+
+void actualizarArchivo(const char* tar_filename, const char* archivo_a_actualizar) {
+    // Abrir el archivo TAR en modo lectura.
+    struct Espacio espacios[100];
+    struct Archivo archivos[100];
+    FILE* tar_file = fopen(tar_filename, "rb+");
+    
+    if (tar_file == NULL) {
+        printf("Error al abrir el archivo tar: %s\n", tar_filename);
+        return;
+    }
+  /*
+    // Buscar el archivo en el TAR.
+    ////////////////////////////////////////////////////struct Archivo archivos[100];
+    int encontrado = 0;
+    int i;
+    // Leer todos los registros de archivo en el archivo TAR
+    for (i = 0; i < 100; i++) {
+        if (fread(&archivos[i], sizeof(struct Archivo), 1, tar_file) != 1) {
+            // Si no se pudo leer un registro, salir del bucle
+            break;
+        }
+
+        if (strcmp(archivos[i].nombre, archivo_a_actualizar) == 0) {
+            // El archivo buscado se encontró en el arreglo de estructuras
+            encontrado = 1;
+            break;
+            
+        }
+    }
+    */
+
+
+
+    int encontrado = 0;  // Variable para indicar si el archivo se encontró
+
+    // Leer el contenido del archivo tar.
+    
+    fread(archivos, sizeof(struct Archivo), 100, tar_file);
+    int posicion = 0;
+    for (int i = 0; i < 100; i++) {
+        if (strcmp(archivos[i].nombre, archivo_a_actualizar) == 0) {
+            // Encontrado el archivo con el nombre deseado.
+            encontrado = 1;
+            posicion = i;
+            break;  // No es necesario seguir buscando, ya lo encontraste.
+        }
+    }
+    ///////
+    
+    if (encontrado) {
+        printf("Archivo encontrado en el TAR:\n");
+        printf("Nombre: %s\n", archivos[posicion].nombre);
+        printf("Tamaño en el TAR: %ld bytes\n", archivos[posicion].peso);
+        printf("Inicio: %ld\n", archivos[posicion].inicio);
+        printf("Fin: %ld\n", archivos[posicion].fin);
+        // Guardar los valores de inicio y fin del archivo antes de borrarlo.
+        long inicio_viejo = archivos[posicion].inicio;
+        long fin_viejo = archivos[posicion].fin;
+
+        
+        // Obtener el peso del archivo a actualizar.
+        FILE* archivo_a_actualizar_fp = fopen(archivo_a_actualizar, "rb");
+        if (archivo_a_actualizar_fp) {
+            fseek(archivo_a_actualizar_fp, 0, SEEK_END);
+            long peso_a_actualizar = ftell(archivo_a_actualizar_fp);
+            fclose(archivo_a_actualizar_fp);
+            printf("Peso del archivo a actualizar: %ld bytes\n", peso_a_actualizar);
+
+            
+            
+            // Borrar el archivo.
+            borrarArchivo(tar_filename, archivo_a_actualizar);
+
+            // Concatenar los espacios contiguos.
+            concatenarEspaciosContiguos(tar_filename);
+            // Mueve el cursor al principio del arreglo "Espacios".
+            fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
+            //////////////////////////////////////////////////////////////struct Espacio espacios[100];
+            fread(espacios, sizeof(struct Espacio), 100, tar_file);
+            long inicio_nuevo;
+            long fin_nuevo;
+            int espacio_encontrado;
+            for (int i = 0; i < 100; i++) {
+                if ((espacios[i].inicio != -1 && espacios[i].fin != -1) &&
+                    (espacios[i].inicio == inicio_viejo ||
+                     espacios[i].fin == fin_viejo ||
+                     (espacios[i].inicio < inicio_viejo && espacios[i].fin > fin_viejo))) {
+                    printf("+Inicio: %ld, Fin: %ld\n", espacios[i].inicio, espacios[i].fin);
+                    printf("-Inicio viejo: %ld, Fin viejo: %ld\n", inicio_viejo, fin_viejo);
+                    
+                    inicio_nuevo = espacios[i].inicio;
+                    fin_nuevo = espacios[i].fin;
+                    espacio_encontrado = i;
+                }
+            }
+            printf("----- %ld, ---- %ld\n",  fin_nuevo-inicio_nuevo, peso_a_actualizar);
+            if (fin_nuevo - inicio_nuevo  == peso_a_actualizar) {
+                printf("El espacio disponible es exactamente del mismo tamaño que el archivo a actualizar.\n");
+                // Llama a la función para actualizar registros.
+                actualizarRegistros(tar_file, archivo_a_actualizar, peso_a_actualizar, inicio_nuevo, peso_a_actualizar + inicio_nuevo);
+
+                // Reemplaza el espacio existente en el índice encontrado con el nuevo espacio no disponible.
+                espacios[espacio_encontrado].inicio = -1;
+                espacios[espacio_encontrado].fin = -1;
+
+                // Cierra el archivo después de hacer las modificaciones.
+                fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
+                fwrite(espacios, sizeof(struct Espacio), 100, tar_file);
+                
+            } else if (fin_nuevo - inicio_nuevo > peso_a_actualizar) {
+                printf("El espacio disponible es mayor que el tamaño del archivo a actualizar.\n");
+                // Llama a la función para actualizar registros.
+                actualizarRegistros(tar_file, archivo_a_actualizar, peso_a_actualizar, inicio_nuevo, peso_a_actualizar + inicio_nuevo);
+    
+                // Crea un nuevo archivo con el espacio restante.
+                long espacio_restante = fin_nuevo - (inicio_nuevo + peso_a_actualizar);
+                if (espacio_restante > 0) {
+                    char* name = "loco"; // Nombre del nuevo archivo necesario
+                    FILE* nuevo_archivo = fopen(name, "wb");
+                    if (nuevo_archivo != NULL) {
+                        // Asigna el peso del nuevo archivo.
+                        fseek(nuevo_archivo, espacio_restante - 1, SEEK_SET);
+                        fputc(0, nuevo_archivo);
+                        fclose(nuevo_archivo);
+    
+                        // Llama a la función para actualizar registros del nuevo archivo.
+                        long nuevo_inicio = fin_nuevo + 1;
+                        long nuevo_fin = nuevo_inicio + espacio_restante - 1;
+                        printf("Nuevo archivo creado con éxito: %s\n", name);
+                        actualizarRegistros(tar_file, "", espacio_restante,  peso_a_actualizar + inicio_nuevo + 1, peso_a_actualizar + inicio_nuevo + espacio_restante );
+
+                        // Reemplaza el espacio existente en el índice encontrado con el nuevo espacio.
+                        espacios[espacio_encontrado].inicio = inicio_nuevo + peso_a_actualizar + 1;
+                        espacios[espacio_encontrado].fin = fin_nuevo;
+
+                        // Cierra el archivo después de hacer las modificaciones.
+                        fseek(tar_file, sizeof(struct Archivo) * 100, SEEK_SET);
+                        fwrite(espacios, sizeof(struct Espacio), 100, tar_file);
+                        //ordenarArchivosPorInicio(tar_file);
+                      } else {
+                    printf("No se pudo crear el nuevo archivo para el espacio restante.\n");
+                      }
+                  }
+                        
+            } else {
+                printf("El espacio disponible es insuficiente para el archivo a actualizar.\n");
+                printf("La bandera A está 1%ld \n",archivos[4].peso);
+                // Agregar el archivo al final del arreglo de archivos si es mayor que el espacio.
+                
+                int espacio_disponible = -1;
+                for (int j = 0; j < 100; j++) {
+                  printf("dale carajo\n");
+                    if (archivos[j].peso == -1) {
+                      printf("La bandera A está activada %ld \n", archivos[j].peso);
+                        espacio_disponible = j;
+                        // Se ha encontrado un espacio vacío en el arreglo de archivos.
+                        break;
+                    }
+                }
+                printf("La bandera A está 2\n");
+                if (espacio_disponible != -1 && espacio_disponible < 100) {
+                    // Copia el nombre del archivo a agregar en la estructura de archivos.
+                    strncpy(archivos[espacio_disponible].nombre, archivo_a_actualizar, sizeof(archivos[espacio_disponible].nombre));
+                    archivos[espacio_disponible].peso = peso_a_actualizar;
+                    archivos[espacio_disponible].inicio = archivos[espacio_disponible-1].fin + 1;
+                    archivos[espacio_disponible].fin = archivos[espacio_disponible-1].fin + peso_a_actualizar;
+
+                    fseek(tar_file, espacio_disponible * sizeof(struct Archivo), SEEK_SET);
+                    fwrite(&archivos[espacio_disponible], sizeof(struct Archivo), 1, tar_file);
+
+
+
+                    printf("Archivo %s agregado en la posición %d.\n", archivo_a_actualizar, espacio_disponible);
+                  }
+                  }
+        } else {
+            printf("Error al abrir el archivo a actualizar: %s\n", archivo_a_actualizar);
+        }
+    } else {
+        printf("No se puede actualizar un archivo que no está en el TAR.\n");
+    }
+    
+
+    // Cerrar el archivo TAR cuando hayas terminado.
+    fclose(tar_file);
+}
+
 
 
 int main(int argc, char* argv[]) {
@@ -771,13 +986,13 @@ int main(int argc, char* argv[]) {
   const char* tar_file = "probanding.tar";
   int num_files = 7;
   const char* files_to_pack[] = {"archivo1.pdf","archivo2.pdf","archivo3.pdf","archivo4.pdf","archivo5.pdf","archivo6.pdf","archivo7.pdf", NULL};
-
 /*
+
   // Nombre del archivo PDF
-    const char* filename = "pufil.pdf";
+    const char* filename = "archivo2.pdf";
     
     // Tamaño deseado en bytes
-    long desiredSize = 4542531;
+    long desiredSize = 8813684;
 
     // Abre el archivo en modo escritura binaria
     FILE* file = fopen(filename, "wb");
@@ -799,7 +1014,7 @@ int main(int argc, char* argv[]) {
       }
         // Cierra el archivo
         fclose(file);
-*/
+  */
   //crearTAR(tar_file);
   //archivos_pruebas(tar_file);
 
@@ -833,8 +1048,8 @@ int main(int argc, char* argv[]) {
   //listarTAR("simulit.tar");
   //istarEspacios("simulit.tar");
   //agregarArchivo("ArchivoTAR_Lleno.tar","archivo4.pdf");
-  //crearTAR("simuli.tar");
-  //empacarArchivos("simuli.tar", 4, "archivo1.pdf" "archivo2.pdf" "archivo3.pdf" "archivo4.pdf");
+  //crearTAR("test42.tar");
+  //empacarArchivos("test.tar", "archivo1.pdf"  "archivo3.pdf" "archivo4.pdf" "archivo5.pdf",4);
   //concatenarEspaciosContiguos("simul.tar");
 
 
@@ -865,19 +1080,27 @@ int main(int argc, char* argv[]) {
   //listarTAR("copia.tar");
   //archivos_pruebas("copia.tar");
 /*
-  crearTAR("be.tar");
+  crearTAR("fff.tar");
   const char* archivos_entrada[] = {"archivo1.pdf", "archivo2.pdf", "archivo3.pdf", "archivo4.pdf", "archivo5.pdf"};
   int num_archivos = 5;
-  const char* archivo_salida = "be.tar";
+  const char* archivo_salida = "fff.tar";
 
   // Llamar a la función con valores predeterminados
   empacarArchivos(archivo_salida, archivos_entrada, num_archivos);
 */
-  //borrarArchivo("bh.tar", "archivo1.pdf");
-  //borrarArchivo("be.tar", "archivo2.pdf");
-  concatenarEspaciosContiguos("bh.tar");
-  listarTAR("bh.tar");
-  listarEspacios("bh.tar");
+  //borrarArchivo("test36.tar", "archivo88.pdf");
+  //borrarArchivo("f.tar", "archivo1.pdf");
+  //concatenarEspaciosContiguos("bh.tar");
+  //listarTAR("actualizar.tar");
+  actualizarArchivo("ffff.tar", "archivo2.pdf");
+  //crearTAR("cartago");
+  //agregarArchivo("test.tar","archivo1.pdf");
+  //agregarArchivo("f.tar","archivo1.pdf");
+  //agregarArchivo("cartago.tar","archivo3.pdf");
+  //agregarArchivo("cartago.tar","archivo4.pdf");
+  //agregarArchivo("cartago.tar","archivo5.pdf");
+  listarArchivosTAR("ffff.tar");
+  listarEspacios("ffff.tar");
 
   return 0;
 }
